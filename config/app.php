@@ -122,5 +122,7 @@ return [
         'driver' => env('APP_MAINTENANCE_DRIVER', 'file'),
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
+    'paginate' => true,
+    'paginate_per_page' => env('PAGINATE_PER_PAGE', 25),
 
 ];
