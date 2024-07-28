@@ -22,11 +22,11 @@ class MedicineIncoming extends Model
         'medicine_id',
         'batch_no',
         'date',
-        'quantity',
+        'quantity'
     ];
 
     public function outgoings()
     {
-        return $this->hasMany(MedicineOutgoing::class, 'medicine_id', 'medicine_id');
+        return $this->hasMany(MedicineOutgoing::class, 'batch_no', 'batch_no');
     }
 }

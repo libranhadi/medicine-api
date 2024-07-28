@@ -120,6 +120,7 @@ class MedicineOutgoingController extends Controller
 
     public function create($lang, StoreMedicineOutgoingRequest $request)
     {
+    
         try {
             App::setLocale($lang);
             $user = Auth::user();
@@ -137,17 +138,24 @@ class MedicineOutgoingController extends Controller
             $quantity = $input['quantity'];
 
             $incomingMedicines = MedicineIncoming::with('outgoings')
-                ->where('medicine_id', $medicineId)
-                ->whereRaw('(quantity > COALESCE((SELECT SUM(quantity) FROM medicine_outgoings WHERE medicine_outgoings.medicine_id = medicine_incomings.medicine_id AND medicine_outgoings.batch_no = medicine_incomings.batch_no AND medicine_outgoings.deleted_at IS NULL), 0))')
-                ->orderBy('date', 'ASC')
+                ->where('id_medicine', $medicineId)
+                ->whereRaw('
+                    (quantity > COALESCE((SELECT SUM(quantity) FROM 
+                        medicine_outgoings 
+                        WHERE medicine_outgoings.medicine_id = medicine_incomings.id_medicine 
+                        AND medicine_outgoings.batch_no = medicine_incomings.batch_no 
+                        AND medicine_outgoings.deleted_at IS NULL), 0))'
+                )->orderBy('date', 'ASC')
                 ->get();
+
 
             $totalStock = $incomingMedicines->sum(function ($medicine) {
                 return $medicine->quantity - $medicine->outgoings->sum('quantity');
             });
+        
             $checkStock = ($totalStock >= $quantity);
             $data = $checkStock;
-            if ($checkStock) {
+            if ($checkStock && count($incomingMedicines) > 0) {
                 $prepareForBulkInsert = [];
                 foreach ($incomingMedicines as $medicine) {
                     $availableStock = $medicine->quantity - $medicine->outgoings->sum('quantity');
@@ -156,6 +164,8 @@ class MedicineOutgoingController extends Controller
                     $existingMedicineOutgoing = MedicineOutgoing::where('medicine_id', $medicineId)
                         ->where('batch_no', $medicine->batch_no)
                         ->where('exp_date', $medicine->exp_date)
+                        ->where('quantity', $medicine->quantity)
+                        ->where('date', $date)
                         ->first();
                 
                     if(!empty($existingMedicineOutgoing)) {
@@ -170,6 +180,7 @@ class MedicineOutgoingController extends Controller
                         'date' => $date,
                         'created_at' => now(),
                         'updated_at' => now(),
+                        'unit_id' => $request->unit_id
                     ];
             
                     $quantity -= $quantityOutgoing;
@@ -178,16 +189,20 @@ class MedicineOutgoingController extends Controller
                         break;
                     }
                 }
+
                 MedicineOutgoing::insert($prepareForBulkInsert);
                 activity()
                 ->causedBy($user)
                 ->log('Created medicine outgoing data');
-
             } else {
                 $medicine = Medicine::findOrFail($medicineId);
-                $data = trans('validation.medicine_stock_not_enough', ['name' => $medicine->name]);
+                $data = trans('messages.medicine_stock_not_enough', ['name' => $medicine->name]);
             }
         } catch (\Exception $e) {
+            return response()->json([
+                "error" => true,
+                'message' => trans('messages.internal_server_error'),
+            ], 500);
         }
         $response = $data;
 

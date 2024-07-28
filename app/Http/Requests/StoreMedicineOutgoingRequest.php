@@ -25,6 +25,7 @@ class StoreMedicineOutgoingRequest extends FormRequest
     {
         return [
             'id_medicine' => 'required',
+            'unit_id' => 'required|numeric',
             'quantity' => 'required|numeric|min:1',
         ];
     }
@@ -33,6 +34,8 @@ class StoreMedicineOutgoingRequest extends FormRequest
     {
         return [
             'quantity.min' => 'The quantity must be at least :min.',
+            'unit_id.required' => 'Please, select unit',
+            'unit_id.numeric' => 'Invalid field unit',
         ];
     }
 

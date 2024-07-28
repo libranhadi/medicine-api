@@ -16,6 +16,7 @@ return new class extends Migration
             $table->unsignedBigInteger('id_medicine');
             $table->string('batch_no', 60);
             $table->date('date');
+            $table->date('exp_date');
             $table->integer('quantity');
             $table->timestamps();
             $table->softDeletes()->index();
